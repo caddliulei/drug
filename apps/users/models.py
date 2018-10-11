@@ -29,7 +29,7 @@ class UserProfile(AbstractUser):
 
 class VerifyCode(models.Model):
     """
-    验证码
+    邮箱验证码
     """
     code = models.CharField(max_length=6, verbose_name='验证码')
     email = models.CharField(max_length=100, verbose_name='邮箱')
