@@ -16,7 +16,7 @@ import sys
 import datetime
 import djcelery
 djcelery.setup_loader()
-
+# from rest_framework import pagination
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
@@ -49,16 +49,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     'users',
     'works',
     'rest_framework',
+    'django_filters',
     'crispy_forms',
     'xadmin',
     'rest_framework.authtoken',
     'corsheaders',
     'djcelery',
-    # 'django_celery_results',
+    'rest_auth',
+    'dynamic_rest',
 ]
+
+# SIZE_ID = 1
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -86,6 +91,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.media',
             ],
         },
     },
@@ -152,24 +158,51 @@ MEDIA_URL = "/media/"
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
+vina_path = '/home/jianping/vina/bin/vina'
+TARGET_FOLDER_BASE = '/home/jianping/target-pkl'
+drugdb = '/home/jianping/drugdb'
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'drug.settings'
-EMAIL_HOST = "smtp.sina.com"
-EMAIL_PORT = 25
-EMAIL_HOST_USER = "my_liulei@sina.com"
-EMAIL_HOST_PASSWORD = "201202shijie"
-EMAIL_USE_TLS = False
-EMAIL_FROM = "my_liulei@sina.com"
+# EMAIL_HOST = "smtp.sina.com"
+# EMAIL_PORT = 25
+# EMAIL_HOST_USER = "my_liulei@sina.com"
+# EMAIL_HOST_PASSWORD = "201202shijie"
+# EMAIL_USE_TLS = False
+
+EMAEMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.163.com'
+EMAIL_PORT = 25  # 端口号
+EMAIL_HOST_USER = '18302281852@163.com'
+EMAIL_HOST_PASSWORD = 'wibrow123'
+DEFAULT_FROM_EMAIL = '18302281852@163.com'
+EMAIL_FROM = '18302281852@163.com'
 
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication'
         # 'rest_framework.authentication.TokenAuthentication',
-    )
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
 }
+
+# REST_AUTH_REGISTER_SERIALIZERS = {
+#     'REGISTER_SERIALIZER': 'users.serializers.UserRegSerializer',
+#     # 'LOGIN_SERIALIZER': 'path.to.custom.LoginSerializer',
+#     # 'TOKEN_SERIALIZER': 'path.to.custom.TokenSerializer',
+# }
+
+REST_AUTH_SERIALIZERS = {
+    'USER_DETAILS_SERIALIZER': 'users.serializers.UserDetailSerializer',
+    # 'TOKEN_SERIALIZER': 'path.to.custom.TokenSerializer',
+}
+
 
 JWT_AUTH = {
     'JWT_EXPIRATION_DELTA': datetime.timedelta(days=7),

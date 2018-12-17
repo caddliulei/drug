@@ -1,11 +1,12 @@
 # coding=utf-8
-from __future__ import unicode_literals
+# from __future__ import unicode_literals
 
 from rest_framework import serializers
-
-from .models import Banner, Product, AutoDuck, AutoDuck2, VirtualScreen, VirtualScreen2
-from .models import VsBlast, ReverseVirtualScreen, Dynamic, Admet
+from dynamic_rest.serializers import DynamicModelSerializer
+from .models import Banner, Product, AutoDock, AutoDock2, VirtualScreen, VirtualScreen2
+from .models import Target, VsBlast, ReverseVirtualScreen, Dynamic, Admet, Screen
 from django.contrib.auth import get_user_model
+
 User = get_user_model()
 
 
@@ -23,23 +24,30 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class AutoDuckSerializer(serializers.ModelSerializer):
+class TargetSerilizer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Target
+        fields = '__all__'
+
+
+class AutoDockSerializer(serializers.ModelSerializer):
     user = serializers.HiddenField(
         default=serializers.CurrentUserDefault()
     )
 
     class Meta:
-        model = AutoDuck
+        model = AutoDock
         fields = "__all__"
 
 
-class AutoDuck2Serializer(serializers.ModelSerializer):
+class AutoDock2Serializer(serializers.ModelSerializer):
     user = serializers.HiddenField(
         default=serializers.CurrentUserDefault()
     )
 
     class Meta:
-        model = AutoDuck2
+        model = AutoDock2
         fields = "__all__"
 
 
@@ -70,6 +78,13 @@ class VsBlastSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VsBlast
+        fields = "__all__"
+
+
+class ScreenSerializer(DynamicModelSerializer):
+
+    class Meta:
+        model = Screen
         fields = "__all__"
 
 

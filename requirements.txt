@@ -1,0 +1,15 @@
+django==1.11.15
+rdkit
+numpy
+pandas
+djangorestframework
+pandas
+markdown
+django-filter
+six
+celery-with-redis==3.0
+celery==3.1.25
+kombu==3.0.37
+billiard==3.3.0.23
+django-celery==3.2.2
+djangorestframework-jwt

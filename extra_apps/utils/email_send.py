@@ -22,4 +22,3 @@ def email_send(email, code, send_type="register"):
                                 from_email=EMAIL_FROM, recipient_list=[email])
         return send_status
 
-

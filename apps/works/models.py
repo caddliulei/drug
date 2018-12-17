@@ -13,11 +13,27 @@ def upload_to(instance, filename):
     return '/'.join([MEDIA_ROOT, instance.user.username, instance.work_name, filename])
 
 
+def dock_upload_to(instance, filename):
+    return '/'.join(['dock', instance.user.username, instance.work_name, filename])
+
+
+def dock2_upload_to(instance, filename):
+    return '/'.join(['dock2', instance.user.username, instance.work_name, filename])
+
+
+def screen_upload_to(instance, filename):
+    return '/'.join(['screen', instance.user.username, instance.work_name, filename])
+
+
+def screen2_upload_to(instance, filename):
+    return '/'.join(['screen2', instance.user.username, instance.work_name, filename])
+
+
 class Banner(models.Model):
     """
     首页轮播图
     """
-    image = models.ImageField(upload_to='media/banner/', verbose_name="轮播图片")
+    image = models.ImageField(upload_to='banner/', verbose_name="轮播图片")
     index = models.IntegerField(verbose_name="轮播顺序")
     add_time = models.DateTimeField(default=datetime.now, verbose_name="添加时间")
 
@@ -44,23 +60,41 @@ class Product(models.Model):
         return self.name
 
 
-class AutoDuck(models.Model):
+class Target(models.Model):
+    """
+    靶点列表
+    """
+    target = models.CharField(max_length=20, verbose_name="靶点名称")
+
+    class Meta:
+        verbose_name = '靶点名称'
+        verbose_name_plural = verbose_name
+
+    def __unicode__(self):
+        return self.target
+
+
+class AutoDock(models.Model):
     """
     分子对接  用户指点中心坐标以及盒子大小
 
     """
-    user = models.ForeignKey(User, verbose_name='用户')
-    work_name = models.CharField(max_length=20, verbose_name='任务名称')
-    work_decs = models.CharField(max_length=100, default='', verbose_name='任务描述')
-    mol_db = models.CharField(max_length=10, choices=((1, 'zinc'), (2, 'chembl')), verbose_name='数据库选择')
+    user = models.ForeignKey(User, verbose_name='user')
+    work_name = models.CharField(max_length=20, verbose_name='work_name', unique=True)
+    work_decs = models.CharField(max_length=100, default='', verbose_name='work_decs')
     size_x = models.FloatField(verbose_name='size_x')
     size_y = models.FloatField(verbose_name='size_y')
     size_z = models.FloatField(verbose_name='size_z')
     center_x = models.FloatField(verbose_name='center_x')
     center_y = models.FloatField(verbose_name='center_y')
     center_z = models.FloatField(verbose_name='center_z')
-    pdb_file = models.FileField(upload_to=upload_to, verbose_name='pdb文件')
-    add_time = models.DateTimeField(default=datetime.now, verbose_name="添加时间")
+    pdb_file = models.FileField(upload_to=dock_upload_to, verbose_name='pdb_file')
+    lig_file = models.FileField(upload_to=dock_upload_to, verbose_name='lig_file')
+    price = models.IntegerField(default=10000, verbose_name="price")
+    status = models.CharField(default='waiting', max_length=10, verbose_name='status')
+    out_path = models.FileField(null=True, verbose_name='out_path')
+    affinity = models.CharField(default='the position is unreasonable', max_length=100, verbose_name='affinity')
+    add_time = models.DateTimeField(default=datetime.now, verbose_name="add_time")
 
     class Meta:
         verbose_name = '分子对接'
@@ -70,18 +104,22 @@ class AutoDuck(models.Model):
         return self.user.username
 
 
-class AutoDuck2(models.Model):
+class AutoDock2(models.Model):
     """
     分子对接  用户指点对接的残基
 
     """
-    user = models.ForeignKey(User, verbose_name='用户')
-    work_name = models.CharField(max_length=20, verbose_name='任务名称')
-    work_decs = models.CharField(max_length=100, default='', verbose_name='任务描述')
-    mol_db = models.CharField(max_length=10, choices=((1, 'zinc'), (2, 'chembl')), verbose_name='数据库选择')
-    lig_file = models.FileField(upload_to=upload_to, verbose_name='配体文件')
-    pdb_file = models.FileField(upload_to=upload_to, verbose_name='pdb文件')
-    add_time = models.DateTimeField(default=datetime.now, verbose_name="添加时间")
+    user = models.ForeignKey(User, verbose_name='user')
+    work_name = models.CharField(max_length=20, verbose_name='work_name', unique=True)
+    work_decs = models.CharField(max_length=100, default='', verbose_name='work_decs')
+    pdb_file = models.FileField(upload_to=dock2_upload_to, verbose_name='pdb_file')
+    lig_file = models.FileField(upload_to=dock2_upload_to, verbose_name='lig_file')
+    resi_file = models.FileField(upload_to=dock2_upload_to, verbose_name='resi_file')
+    price = models.IntegerField(default=10000, verbose_name="price")
+    status = models.CharField(default='waiting', max_length=10, verbose_name='status')
+    out_path = models.FileField(null=True, verbose_name='out_path')
+    affinity = models.CharField(default='the position is unreasonable', max_length=100,verbose_name='affinity')
+    add_time = models.DateTimeField(default=datetime.now, verbose_name="add_time")
 
     class Meta:
         verbose_name = '分子对接2'
@@ -95,18 +133,22 @@ class VirtualScreen(models.Model):
     """
     虚拟筛选
     """
-    user = models.ForeignKey(User, verbose_name='用户')
-    work_name = models.CharField(max_length=20, verbose_name='任务名称')
-    work_decs = models.CharField(max_length=100, default='', verbose_name='任务描述')
-    mol_db = models.CharField(max_length=10, choices=((1, 'zinc'), (2, 'chembl')), verbose_name='数据库选择')
+    user = models.ForeignKey(User, verbose_name='user')
+    work_name = models.CharField(max_length=20, verbose_name='work_name', unique=True)
+    work_decs = models.CharField(max_length=100, default='', verbose_name='work_decs')
+    mol_db = models.CharField(max_length=10, null=True, choices=((1, 'zinc'), (2, 'chembl'), (3, 'wi')),
+                              verbose_name='mol_db')
     size_x = models.FloatField(verbose_name='size_x')
     size_y = models.FloatField(verbose_name='size_y')
     size_z = models.FloatField(verbose_name='size_z')
     center_x = models.FloatField(verbose_name='center_x')
     center_y = models.FloatField(verbose_name='center_y')
     center_z = models.FloatField(verbose_name='center_z')
-    pdb_file = models.FileField(upload_to=upload_to, verbose_name='pdb文件')
-    add_time = models.DateTimeField(default=datetime.now, verbose_name="添加时间")
+    pdb_file = models.FileField(upload_to=screen_upload_to, verbose_name='pdb_file')
+    user_db = models.FileField(upload_to=screen_upload_to, null=True, verbose_name='user_db')
+    price = models.IntegerField(default=10000, verbose_name="price")
+    status = models.CharField(default='waiting', max_length=10, verbose_name='status')
+    add_time = models.DateTimeField(default=datetime.now, verbose_name="add_time")
 
     class Meta:
         verbose_name = '虚拟筛选'
@@ -120,13 +162,17 @@ class VirtualScreen2(models.Model):
     """
     虚拟筛选2
     """
-    user = models.ForeignKey(User, verbose_name='用户')
-    work_name = models.CharField(max_length=20, verbose_name='任务名称')
-    work_decs = models.CharField(max_length=100, default='', verbose_name='任务描述')
-    mol_db = models.CharField(max_length=10, choices=((1, 'zinc'), (2, 'chembl')), verbose_name='数据库选择')
-    lig_file = models.FileField(upload_to=upload_to, verbose_name='残基文件')
-    pdb_file = models.FileField(upload_to=upload_to, verbose_name='pdb文件')
-    add_time = models.DateTimeField(default=datetime.now, verbose_name="添加时间")
+    user = models.ForeignKey(User, verbose_name='user')
+    work_name = models.CharField(max_length=20, verbose_name='work_name', unique=True)
+    work_decs = models.CharField(max_length=100, default='', verbose_name='work_decs')
+    mol_db = models.CharField(max_length=10, null=True, choices=((1, 'zinc'), (2, 'chembl'), (3, 'wi')),
+                              default=0, verbose_name='mol_db')
+    pdb_file = models.FileField(upload_to=screen2_upload_to, verbose_name='pdb_file')
+    resi_file = models.FileField(upload_to=screen2_upload_to, verbose_name='resi_file')
+    user_db = models.FileField(upload_to=screen2_upload_to, null=True, verbose_name='user_db')
+    price = models.IntegerField(default=10000, verbose_name="price")
+    status = models.CharField(default='waiting', max_length=10, verbose_name='status')
+    add_time = models.DateTimeField(default=datetime.now, verbose_name="add_time")
 
     class Meta:
         verbose_name = '虚拟筛选2'
@@ -134,6 +180,20 @@ class VirtualScreen2(models.Model):
 
     def __unicode__(self):
         return self.user.username
+
+
+class Screen(models.Model):
+    work_name = models.CharField(max_length=100, verbose_name='work_name')
+    screen_cat = models.CharField(max_length=10, verbose_name='筛选类别')
+    affinity = models.FloatField(verbose_name='affinity')
+    path = models.FileField(max_length=100, verbose_name='out_file')
+
+    class Meta:
+        verbose_name = '虚拟筛选结果'
+        verbose_name_plural = verbose_name
+
+    def __unicode__(self):
+        return self.work_name
 
 
 class VsBlast(models.Model):
