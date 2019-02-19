@@ -61,7 +61,8 @@ urlpatterns = [
     url(r'^', include(router.urls)),
     url(r'^media/(?P<path>.*)$', serve, {"document_root": MEDIA_ROOT}),
     url(r'^docs/', include_docs_urls(title="高通量药物筛选平台")),
-    url(r'^api-token-auth/', views.obtain_auth_token),
+    # url(r'^api-token-auth/', views.obtain_auth_token),
     url(r'^api-token-auth/', obtain_jwt_token),
     url(r'^rest-auth/', include('rest_auth.urls')),
+    # i/auth/', include('djoser.urls.authtoken')),
     ]

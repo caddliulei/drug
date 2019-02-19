@@ -33,7 +33,6 @@ class OrdersPagination(DynamicPageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     page_query_param = "page"
-    max_page_size = 10
 
 
 class CustomBackend(ModelBackend):
@@ -116,7 +115,7 @@ class AutoDockOrderViewset(DynamicModelViewSet):
     queryset = AutoDock.objects.all()
     pagination_class = OrdersPagination
     permission_classes = (IsAuthenticated,)
-    authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
+    # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
     serializer_class = AutoDuckOrderSerializer
     ordering = ('add_time',)
 
@@ -130,7 +129,7 @@ class AutoDock2OrderViewset(DynamicModelViewSet):
     queryset = AutoDock2.objects.all()
     pagination_class = OrdersPagination
     permission_classes = (IsAuthenticated,)
-    authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
+    # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
     serializer_class = AutoDuck2OrderSerializer
     ordering = ('add_time',)
 
@@ -144,7 +143,7 @@ class VirtualScreenOrderViewset(DynamicModelViewSet):
     queryset = VirtualScreen.objects.all()
     pagination_class = OrdersPagination
     permission_classes = (IsAuthenticated, )
-    authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
+    # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
     serializer_class = VirtualScreenOrderSerializer
     ordering = ('add_time',)
 
@@ -158,7 +157,7 @@ class VirtualScreen2OrderViewset(DynamicModelViewSet):
     queryset = VirtualScreen2.objects.all()
     pagination_class = OrdersPagination
     permission_classes = (IsAuthenticated,)
-    authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
+    # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
     serializer_class = VirtualScreen2OrderSerializer
     ordering = ('add_time',)
 

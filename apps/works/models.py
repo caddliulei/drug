@@ -136,7 +136,8 @@ class VirtualScreen(models.Model):
     user = models.ForeignKey(User, verbose_name='user')
     work_name = models.CharField(max_length=20, verbose_name='work_name', unique=True)
     work_decs = models.CharField(max_length=100, default='', verbose_name='work_decs')
-    mol_db = models.CharField(max_length=10, null=True, choices=((1, 'zinc'), (2, 'chembl'), (3, 'wi')),
+    mol_db = models.CharField(max_length=20, null=True, choices=(('zinc', 'zinc'), ('chembl', 'chembl'), ('wi', 'wi'),
+                                                                 ('user_db_file', 'user_db_file')),
                               verbose_name='mol_db')
     size_x = models.FloatField(verbose_name='size_x')
     size_y = models.FloatField(verbose_name='size_y')
@@ -165,7 +166,8 @@ class VirtualScreen2(models.Model):
     user = models.ForeignKey(User, verbose_name='user')
     work_name = models.CharField(max_length=20, verbose_name='work_name', unique=True)
     work_decs = models.CharField(max_length=100, default='', verbose_name='work_decs')
-    mol_db = models.CharField(max_length=10, null=True, choices=((1, 'zinc'), (2, 'chembl'), (3, 'wi')),
+    mol_db = models.CharField(max_length=20, null=True, choices=(('zinc', 'zinc'), ('chembl', 'chembl'), ('wi', 'wi'),
+                                                                 ('user_db_file', 'user_db_file')),
                               default=0, verbose_name='mol_db')
     pdb_file = models.FileField(upload_to=screen2_upload_to, verbose_name='pdb_file')
     resi_file = models.FileField(upload_to=screen2_upload_to, verbose_name='resi_file')

@@ -1,11 +1,10 @@
 django==1.11.15
-rdkit
 numpy
 pandas
 djangorestframework
 pandas
 markdown
-django-filter
+django-filter=1.1.0
 six
 celery-with-redis==3.0
 celery==3.1.25
@@ -13,3 +12,14 @@ kombu==3.0.37
 billiard==3.3.0.23
 django-celery==3.2.2
 djangorestframework-jwt
+redis=2.10.6
+django-rest-auth
+dynamic-rest
+pillow
+django-cors-headers
+psycopg2
+psycopg2-binary
+django-crispy-forms
+future
+django-import-export
+coreapi

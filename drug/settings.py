@@ -15,10 +15,13 @@ import os
 import sys
 import datetime
 import djcelery
+from os.path import join, dirname, abspath
 djcelery.setup_loader()
 # from rest_framework import pagination
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_DIR = dirname(dirname(abspath(__file__)))
+sys.path.insert(0, PROJECT_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 sys.path.insert(0, os.path.join(BASE_DIR, 'extra_apps'))
@@ -158,7 +161,7 @@ MEDIA_URL = "/media/"
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
-vina_path = '/home/jianping/vina/bin/vina'
+# vina_path = '/home/jianping/vina/bin/vina'
 TARGET_FOLDER_BASE = '/home/jianping/target-pkl'
 drugdb = '/home/jianping/drugdb'
 
@@ -185,7 +188,6 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication'
-        # 'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',

@@ -11,7 +11,7 @@ from rdkit.Chem import AllChem
 from rdkit.DataStructs import TanimotoSimilarity
 from celery import shared_task
 from works.models import AutoDock, AutoDock2, VirtualScreen, VirtualScreen2, Screen
-from drug.settings import BASE_DIR, vina_path, TARGET_FOLDER_BASE, drugdb
+from drug.settings import BASE_DIR, TARGET_FOLDER_BASE, drugdb
 
 # from perform import gen_user_db_qt_smiles
 
@@ -216,7 +216,8 @@ def perform_screen(work_name, center_x, center_y, center_z, size_x, size_y, size
     os.system("python %s/extra_apps/vina/prepare_receptor4.py -r %s"
               " -A checkhydrogens " % (BASE_DIR, pdb_path))
     pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
-    os.system("mv %s %s" % (pdbqt, res_path))
+    if os.path.exists(pdbqt):
+        os.system("mv %s %s" % (pdbqt, res_path))
 
     target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
     smile_file = os.path.join(ligand_db, 'smiles.csv')
@@ -239,7 +240,7 @@ def perform_screen(work_name, center_x, center_y, center_z, size_x, size_y, size
             ligand = target[0].split('.')[0] + '.pdbqt'
             ligand_path = ligand_db + '/' + ligand
             os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
-                      " --center_z %s --size_x %s --size_y %s --size_z %s" % (vina_path, res_path, pdbqt,
+                      " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
                                                                               ligand_path, center_x, center_y, center_z,
                                                                               size_x, size_y, size_z))
             os.system("mv %s %s" % (ligand_path.split('.')[0]+'_out.pdbqt', res))
@@ -314,7 +315,8 @@ def perform_screen2(work_name, mol_db, pdb_path, resi_path, res_path):
     os.system("python %s/extra_apps/vina/prepare_receptor4.py -r /%s"
               " -A checkhydrogens " % (BASE_DIR, pdb_path))
     pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
-    os.system("mv %s %s" % (pdbqt, res_path))
+    if os.path.exists(pdbqt):
+        os.system("mv %s %s" % (pdbqt, res_path))
 
     target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
     smile_file = os.path.join(ligand_db, 'smiles.csv')
@@ -337,7 +339,7 @@ def perform_screen2(work_name, mol_db, pdb_path, resi_path, res_path):
             ligand = target[0].split('.')[0] + '.pdbqt'
             ligand_path = ligand_db + '/' + ligand
             os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
-                      " --center_z %s --size_x %s --size_y %s --size_z %s" % (vina_path, res_path, pdbqt,
+                      " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
                                                                               ligand_path, center_x, center_y, center_z,
                                                                               size_x, size_y, size_z))
             os.system("mv %s %s" % (ligand_path.split('.')[0]+'_out.pdbqt', res))
@@ -406,7 +408,8 @@ def perform_screen_user(work_name, center_x, center_y, center_z, size_x, size_y,
     os.system("python %s/extra_apps/vina/prepare_receptor4.py -r /%s"
               " -A checkhydrogens " % (BASE_DIR, pdb_path))
     pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
-    os.system("mv %s %s" % (pdbqt, res_path))
+    if os.path.exists(pdbqt):
+        os.system("mv %s %s" % (pdbqt, res_path))
 
     target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
     smile_file = os.path.join(user_db, 'smiles.csv')
@@ -430,7 +433,7 @@ def perform_screen_user(work_name, center_x, center_y, center_z, size_x, size_y,
             ligand_path = os.path.join(user_db, ligand)
             if os.path.exists(ligand_path):
                 os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
-                          " --center_z %s --size_x %s --size_y %s --size_z %s" % (vina_path, res_path, pdbqt,
+                          " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
                                                                                   ligand_path, center_x, center_y,
                                                                                   center_z, size_x, size_y, size_z))
                 os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
@@ -510,7 +513,8 @@ def perform_screen2_user(work_name, user_db_name, pdb_path, resi_path, res_path)
     os.system("python %s/extra_apps/vina/prepare_receptor4.py -r /%s"
               " -A checkhydrogens " % (BASE_DIR, pdb_path))
     pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
-    os.system("mv %s %s" % (pdbqt, res_path))
+    if os.path.exists(pdbqt):
+        os.system("mv %s %s" % (pdbqt, res_path))
 
     target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
     smile_file = os.path.join(user_db, 'smiles.csv')
@@ -534,7 +538,7 @@ def perform_screen2_user(work_name, user_db_name, pdb_path, resi_path, res_path)
             ligand_path = os.path.join(user_db, ligand)
             if os.path.exists(ligand_path):
                 os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
-                          " --center_z %s --size_x %s --size_y %s --size_z %s" % (vina_path, res_path, pdbqt,
+                          " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
                                                                                   ligand_path, center_x, center_y,
                                                                                   center_z, size_x, size_y, size_z))
                 os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
@@ -595,14 +599,16 @@ def perform_dock(work_name, center_x, center_y, center_z, size_x, size_y, size_z
     os.system("python %s/extra_apps/vina/prepare_receptor4.py -r %s"
               " -A checkhydrogens " % (BASE_DIR, pdb_path))
     pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
-    os.system("mv %s %s" % (pdbqt, res_path))
+    if os.path.exists(pdbqt):
+        os.system("mv %s %s" % (pdbqt, res_path))
 
     os.system("python %s/extra_apps/vina/prepare_ligand4.py -l %s -v" % (BASE_DIR, lig_path))
     ligqt = lig_path.split('/')[-1].split('.')[0] + '.pdbqt'
-    os.system("mv %s %s" % (ligqt, res_path))
+    if os.path.exists(ligqt):
+        os.system("mv %s %s" % (ligqt, res_path))
 
     os.system("%s --receptor %s/%s --ligand %s/%s --center_x %s --center_y %s --center_z %s --size_x %s --size_y %s"
-              " --size_z %s" % (vina_path, res_path, pdbqt, res_path, ligqt, center_x, center_y, center_z,
+              " --size_z %s" % ('vina', res_path, pdbqt, res_path, ligqt, center_x, center_y, center_z,
                                 size_x, size_y, size_z))
     outqt = ligqt.split('.')[0]+'_out.pdbqt'
     outqt_path = os.path.join(res_path, outqt)
@@ -660,14 +666,16 @@ def perform_dock2(work_name, pdb_path, lig_path, resi_path, res_path):
     os.system("python %s/extra_apps/vina/prepare_receptor4.py -r %s"
               " -A checkhydrogens " % (BASE_DIR, pdb_path))
     pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
-    os.system("mv %s %s" % (pdbqt, res_path))
+    if os.path.exists(pdbqt):
+        os.system("mv %s %s" % (pdbqt, res_path))
 
     os.system("python %s/extra_apps/vina/prepare_ligand4.py -l %s -v" % (BASE_DIR, lig_path))
     ligqt = lig_path.split('/')[-1].split('.')[0] + '.pdbqt'
-    os.system("mv %s %s" % (ligqt, res_path))
+    if os.path.exists(ligqt):
+        os.system("mv %s %s" % (ligqt, res_path))
 
     os.system("%s --receptor %s/%s --ligand %s/%s --center_x %s --center_y %s --center_z %s --size_x %s --size_y %s"
-              " --size_z %s" % (vina_path, res_path, pdbqt, res_path, ligqt, center_x, center_y, center_z,
+              " --size_z %s" % ('vina', res_path, pdbqt, res_path, ligqt, center_x, center_y, center_z,
                                 size_x, size_y, size_z))
     outqt = ligqt.split('.')[0]+'_out.pdbqt'
     outqt_path = os.path.join(res_path, outqt)
@@ -688,3 +696,4 @@ def perform_dock2(work_name, pdb_path, lig_path, resi_path, res_path):
         out_path = os.path.join(res.split('media/')[1], outqt[:-2])
         dock2_out(work_name=work_name, out_path=out_path)
     dock2_status(work_name=work_name, status='completed')
+
