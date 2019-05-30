@@ -188,7 +188,7 @@ def gen_user_db_qt_smiles(input_file, output_path):
 
 
 @shared_task
-def perform_screen(work_name, center_x, center_y, center_z, size_x, size_y, size_z, mol_db, pdb_path, res_path):
+def perform_screen(work_name, user_target, center_x, center_y, center_z, size_x, size_y, size_z, mol_db, pdb_path, res_path):
     """
     用户指定筛选中心以及盒子大小
     :param work_name:
@@ -218,35 +218,55 @@ def perform_screen(work_name, center_x, center_y, center_z, size_x, size_y, size
     pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
     if os.path.exists(pdbqt):
         os.system("mv %s %s" % (pdbqt, res_path))
-
-    target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
-    smile_file = os.path.join(ligand_db, 'smiles.csv')
-    df = pd.read_csv(smile_file, header=None, encoding='utf-8')
-    smile_data = df.values.tolist()
-    curr_proc = mp.current_process()
-    curr_proc.daemon = False
-    p = mp.Pool(processes=mp.cpu_count())
-    curr_proc.daemon = True
-    pool_lst = []
-    for ligand in smile_data:
-        smiles = ligand[1]
-        targets = p.apply_async(pred, args=(smiles, target_list))
-        pool_lst.append([ligand[0], targets])
-    p.close()
-    p.join()
-    pool_lst = [[n[0], n[1].get()] for n in pool_lst]
-    for target in pool_lst:
-        if target[1]:
-            ligand = target[0].split('.')[0] + '.pdbqt'
-            ligand_path = ligand_db + '/' + ligand
+    if len(user_target) > 1:
+        user_target = user_target.split(';')
+        target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
+        smile_file = os.path.join(ligand_db, 'smiles.csv')
+        df = pd.read_csv(smile_file, header=None, encoding='utf-8')
+        smile_data = df.values.tolist()
+        curr_proc = mp.current_process()
+        curr_proc.daemon = False
+        p = mp.Pool(processes=mp.cpu_count())
+        curr_proc.daemon = True
+        pool_lst = []
+        for ligand in smile_data:
+            smiles = ligand[1]
+            targets = p.apply_async(pred, args=(smiles, target_list))
+            pool_lst.append([ligand[0], targets])
+        p.close()
+        p.join()
+        pool_lst = [[n[0], n[1].get()] for n in pool_lst]
+        for target in pool_lst:
+            if target[1]:
+                pred_target = []
+                for pred_tar in target[1]:
+                    pred_target.append(pred_tar['chembl_id'])
+                same_target = [l for l in pred_target if l in user_target]
+                if same_target:
+                    ligand = target[0].split('.')[0] + '.pdbqt'
+                    ligand_path = os.path.join(ligand_db, ligand)
+                    os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
+                              " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
+                                                                                      ligand_path, center_x, center_y,
+                                                                                      center_z, size_x, size_y, size_z))
+                    os.system("mv %s %s" % (ligand_path.split('.')[0]+'_out.pdbqt', res))
+                    os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
+                                                            ligand_path.split('/')[-1].split('.')[0]+'_out.pdbqt')))
+    else:
+        ligand_lst = os.listdir(ligand_db)
+        ligand_lst = [v for v in ligand_lst if v.endswith('pdbqt')]
+        for ligand_ in ligand_lst:
+            ligand_path = os.path.join(ligand_db, ligand_)
             os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
                       " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
-                                                                              ligand_path, center_x, center_y, center_z,
-                                                                              size_x, size_y, size_z))
-            os.system("mv %s %s" % (ligand_path.split('.')[0]+'_out.pdbqt', res))
+                                                                              ligand_path, center_x, center_y,
+                                                                              center_z, size_x, size_y, size_z))
+            os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
             os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
-                                                    ligand_path.split('/')[-1].split('.')[0]+'_out.pdbqt')))
-
+                                                                                                     ligand_path.split(
+                                                                                                         '/')[-1].split(
+                                                                                                         '.')[
+                                                                                                         0] + '_out.pdbqt')))
     res_lst = os.listdir(res)
     reg = 'REMARK VINA RESULT:(.*?)\n'
     re_reg = re.compile(reg)
@@ -263,20 +283,21 @@ def perform_screen(work_name, center_x, center_y, center_z, size_x, size_y, size
                 med.append(float(model.split()[0]))
             file_name = out.split('_out')[0]
             screen_res.append([file_name, min(med)])
-            insert_lst.append(Screen(work_name=work_name, screen_cat='screen', affinity=min(med), path=os.path.join(res.split('media/')[1],
-                                                                                               out[:-2])))
-    Screen.objects.bulk_create(insert_lst)
-    arr = np.array(screen_res)
-    df = pd.DataFrame(arr, columns=['id', 'Affinity (kcal/mol)'])
-    df = df.sort_values("Affinity (kcal/mol)", ascending=False)
-    df.to_csv(screen_out, index=False)
-    os.system("mv %s %s" % (screen_out, res))
+            insert_lst.append(Screen(work_name=work_name, screen_cat='screen', affinity=min(med),
+                                     path=os.path.join(res.split('media/')[1], out[:-2])))
+    if screen_res:
+        Screen.objects.bulk_create(insert_lst)
+        arr = np.array(screen_res)
+        df = pd.DataFrame(arr, columns=['id', 'Affinity (kcal/mol)'])
+        df = df.sort_values("Affinity (kcal/mol)", ascending=False)
+        df.to_csv(screen_out, index=False)
+        os.system("mv %s %s" % (screen_out, res))
 
     screen_status(work_name=work_name, status='completed')
 
 
 @shared_task
-def perform_screen2(work_name, mol_db, pdb_path, resi_path, res_path):
+def perform_screen2(work_name, user_target, mol_db, pdb_path, resi_path, res_path):
     """
     用户指定几个残基进行筛选
     :param work_name:
@@ -318,34 +339,54 @@ def perform_screen2(work_name, mol_db, pdb_path, resi_path, res_path):
     if os.path.exists(pdbqt):
         os.system("mv %s %s" % (pdbqt, res_path))
 
-    target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
-    smile_file = os.path.join(ligand_db, 'smiles.csv')
-    df = pd.read_csv(smile_file, header=None, encoding='utf-8')
-    smile_data = df.values.tolist()
-    curr_proc = mp.current_process()
-    curr_proc.daemon = False
-    p = mp.Pool(processes=mp.cpu_count())
-    curr_proc.daemon = True
-    pool_lst = []
-    for ligand in smile_data:
-        smiles = ligand[1]
-        targets = p.apply_async(pred, args=(smiles, target_list))
-        pool_lst.append([ligand[0], targets])
-    p.close()
-    p.join()
-    pool_lst = [[n[0], n[1].get()] for n in pool_lst]
-    for target in pool_lst:
-        if target[1]:
-            ligand = target[0].split('.')[0] + '.pdbqt'
-            ligand_path = ligand_db + '/' + ligand
+    if len(user_target) > 1:
+        user_target = user_target.split(';')
+        target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
+        smile_file = os.path.join(ligand_db, 'smiles.csv')
+        df = pd.read_csv(smile_file, header=None, encoding='utf-8')
+        smile_data = df.values.tolist()
+        curr_proc = mp.current_process()
+        curr_proc.daemon = False
+        p = mp.Pool(processes=mp.cpu_count())
+        curr_proc.daemon = True
+        pool_lst = []
+        for ligand in smile_data:
+            smiles = ligand[1]
+            targets = p.apply_async(pred, args=(smiles, target_list))
+            pool_lst.append([ligand[0], targets])
+        p.close()
+        p.join()
+        pool_lst = [[n[0], n[1].get()] for n in pool_lst]
+        for target in pool_lst:
+            if target[1]:
+                pred_target = []
+                for pred_tar in target[1]:
+                    pred_target.append(pred_tar['chembl_id'])
+                same_target = [l for l in pred_target if l in user_target]
+                if same_target:
+                    ligand = target[0].split('.')[0] + '.pdbqt'
+                    ligand_path = ligand_db + '/' + ligand
+                    os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
+                              " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
+                                                                                      ligand_path, center_x, center_y, center_z,
+                                                                                      size_x, size_y, size_z))
+                    os.system("mv %s %s" % (ligand_path.split('.')[0]+'_out.pdbqt', res))
+                    os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
+                                                            ligand_path.split('/')[-1].split('.')[0]+'_out.pdbqt')))
+    else:
+        ligand_lst = os.listdir(ligand_db)
+        ligand_lst = [v for v in ligand_lst if v.endswith('pdbqt')]
+        for ligand_ in ligand_lst:
+            ligand_path = os.path.join(ligand_db, ligand_)
             os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
                       " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
-                                                                              ligand_path, center_x, center_y, center_z,
-                                                                              size_x, size_y, size_z))
-            os.system("mv %s %s" % (ligand_path.split('.')[0]+'_out.pdbqt', res))
+                                                                              ligand_path, center_x, center_y,
+                                                                              center_z, size_x, size_y, size_z))
+            os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
             os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
-                                                    ligand_path.split('/')[-1].split('.')[0]+'_out.pdbqt')))
-
+                                                                                                     ligand_path.split(
+                                                                                                         '/')[-1].split(
+                                                                                                         '.')[0] + '_out.pdbqt')))
     res_lst = os.listdir(res)
     reg = 'REMARK VINA RESULT:(.*?)\n'
     re_reg = re.compile(reg)
@@ -362,20 +403,21 @@ def perform_screen2(work_name, mol_db, pdb_path, resi_path, res_path):
                 med.append(float(model.split()[0]))
             file_name = out.split('_out')[0]
             screen_res.append([file_name, min(med)])
-            insert_lst.append(Screen(work_name=work_name, screen_cat='screen2', affinity=min(med), path=os.path.join(res.split('media/')[1],
-                                                                                               out[:-2])))
-    Screen.objects.bulk_create(insert_lst)
-    arr = np.array(screen_res)
-    df = pd.DataFrame(arr, columns=['id', 'Affinity (kcal/mol)'])
-    df = df.sort_values("Affinity (kcal/mol)", ascending=False)
-    df.to_csv(screen_out, index=False)
-    os.system("mv %s %s" % (screen_out, res))
+            insert_lst.append(Screen(work_name=work_name, screen_cat='screen2', affinity=min(med),
+                                     path=os.path.join(res.split('media/')[1], out[:-2])))
+    if screen_res:
+        Screen.objects.bulk_create(insert_lst)
+        arr = np.array(screen_res)
+        df = pd.DataFrame(arr, columns=['id', 'Affinity (kcal/mol)'])
+        df = df.sort_values("Affinity (kcal/mol)", ascending=False)
+        df.to_csv(screen_out, index=False)
+        os.system("mv %s %s" % (screen_out, res))
 
     screen2_status(work_name=work_name, status='completed')
 
 
 @shared_task
-def perform_screen_user(work_name, center_x, center_y, center_z, size_x, size_y, size_z, user_db_name, pdb_path, res_path):
+def perform_screen_user(work_name, user_target, center_x, center_y, center_z, size_x, size_y, size_z, user_db_name, pdb_path, res_path):
     """
     用户提供数据库以及中心坐标和盒子大小进行筛选
     :param work_name:
@@ -411,35 +453,55 @@ def perform_screen_user(work_name, center_x, center_y, center_z, size_x, size_y,
     if os.path.exists(pdbqt):
         os.system("mv %s %s" % (pdbqt, res_path))
 
-    target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
-    smile_file = os.path.join(user_db, 'smiles.csv')
-    df = pd.read_csv(smile_file, header=None, encoding='utf-8')
-    smile_data = df.values.tolist()
-    curr_proc = mp.current_process()
-    curr_proc.daemon = False
-    p = mp.Pool(processes=mp.cpu_count())
-    curr_proc.daemon = True
-    pool_lst = []
-    for ligand in smile_data:
-        smiles = ligand[1]
-        targets = p.apply_async(pred, args=(smiles, target_list))
-        pool_lst.append([ligand[0], targets])
-    p.close()
-    p.join()
-    pool_lst = [[n[0], n[1].get()] for n in pool_lst]
-    for target in pool_lst:
-        if target[1]:
-            ligand = target[0].split('.')[0] + '.pdbqt'
-            ligand_path = os.path.join(user_db, ligand)
-            if os.path.exists(ligand_path):
-                os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
-                          " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
-                                                                                  ligand_path, center_x, center_y,
-                                                                                  center_z, size_x, size_y, size_z))
-                os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
-                os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
-                                                        ligand_path.split('/')[-1].split('.')[0] + '_out.pdbqt')))
-
+    if len(user_target) > 1:
+        user_target = user_target.split(';')
+        target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
+        smile_file = os.path.join(user_db, 'smiles.csv')
+        df = pd.read_csv(smile_file, header=None, encoding='utf-8')
+        smile_data = df.values.tolist()
+        curr_proc = mp.current_process()
+        curr_proc.daemon = False
+        p = mp.Pool(processes=mp.cpu_count())
+        curr_proc.daemon = True
+        pool_lst = []
+        for ligand in smile_data:
+            smiles = ligand[1]
+            targets = p.apply_async(pred, args=(smiles, target_list))
+            pool_lst.append([ligand[0], targets])
+        p.close()
+        p.join()
+        pool_lst = [[n[0], n[1].get()] for n in pool_lst]
+        for target in pool_lst:
+            if target[1]:
+                pred_target = []
+                for pred_tar in target[1]:
+                    pred_target.append(pred_tar['chembl_id'])
+                same_target = [l for l in pred_target if l in user_target]
+                if same_target:
+                    ligand = target[0].split('.')[0] + '.pdbqt'
+                    ligand_path = os.path.join(user_db, ligand)
+                    if os.path.exists(ligand_path):
+                        os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
+                                  " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
+                                                                                          ligand_path, center_x, center_y,
+                                                                                          center_z, size_x, size_y, size_z))
+                        os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
+                        os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
+                                                                ligand_path.split('/')[-1].split('.')[0] + '_out.pdbqt')))
+    else:
+        ligand_lst = os.listdir(user_db)
+        ligand_lst = [v for v in ligand_lst if v.endswith('pdbqt')]
+        for ligand_ in ligand_lst:
+            ligand_path = os.path.join(user_db, ligand_)
+            os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
+                      " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
+                                                                              ligand_path, center_x, center_y,
+                                                                              center_z, size_x, size_y, size_z))
+            os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
+            os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
+                                                                                                     ligand_path.split(
+                                                                                                         '/')[-1].split(
+                                                                                                         '.')[0] + '_out.pdbqt')))
     res_lst = os.listdir(res)
     reg = 'REMARK VINA RESULT:(.*?)\n'
     re_reg = re.compile(reg)
@@ -459,18 +521,19 @@ def perform_screen_user(work_name, center_x, center_y, center_z, size_x, size_y,
             insert_lst.append(Screen(work_name=work_name, screen_cat='screen', affinity=min(med),
                                      path=os.path.join(res.split('media/')[1],
                                                        out[:-2])))
-    Screen.objects.bulk_create(insert_lst)
-    arr = np.array(screen_res)
-    df = pd.DataFrame(arr, columns=['id', 'Affinity (kcal/mol)'])
-    df = df.sort_values("Affinity (kcal/mol)", ascending=False)
-    df.to_csv(screen_out, index=False)
-    os.system("mv %s %s" % (screen_out, res))
+    if screen_res:
+        Screen.objects.bulk_create(insert_lst)
+        arr = np.array(screen_res)
+        df = pd.DataFrame(arr, columns=['id', 'Affinity (kcal/mol)'])
+        df = df.sort_values("Affinity (kcal/mol)", ascending=False)
+        df.to_csv(screen_out, index=False)
+        os.system("mv %s %s" % (screen_out, res))
 
     screen_status(work_name, status='completed')
 
 
 @shared_task
-def perform_screen2_user(work_name, user_db_name, pdb_path, resi_path, res_path):
+def perform_screen2_user(work_name, user_target, user_db_name, pdb_path, resi_path, res_path):
     """
     用户提供数据库以及残基进行筛选
     :param work_name:
@@ -515,36 +578,56 @@ def perform_screen2_user(work_name, user_db_name, pdb_path, resi_path, res_path)
     pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
     if os.path.exists(pdbqt):
         os.system("mv %s %s" % (pdbqt, res_path))
+    if len(user_target) > 1:
+        user_target = user_target.split(';')
+        target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
+        smile_file = os.path.join(user_db, 'smiles.csv')
+        df = pd.read_csv(smile_file, header=None, encoding='utf-8')
+        smile_data = df.values.tolist()
+        curr_proc = mp.current_process()
+        curr_proc.daemon = False
+        p = mp.Pool(processes=mp.cpu_count())
+        curr_proc.daemon = True
+        pool_lst = []
+        for ligand in smile_data:
+            smiles = ligand[1]
+            targets = p.apply_async(pred, args=(smiles, target_list))
+            pool_lst.append([ligand[0], targets])
+        p.close()
+        p.join()
+        pool_lst = [[n[0], n[1].get()] for n in pool_lst]
+        for target in pool_lst:
+            if target[1]:
+                pred_target = []
+                for pred_tar in target[1]:
+                    pred_target.append(pred_tar['chembl_id'])
+                same_target = [l for l in pred_target if l in user_target]
+                if same_target:
+                    ligand = target[0].split('.')[0] + '.pdbqt'
+                    ligand_path = os.path.join(user_db, ligand)
+                    if os.path.exists(ligand_path):
+                        os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
+                                  " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
+                                                                                          ligand_path, center_x, center_y,
+                                                                                          center_z, size_x, size_y, size_z))
+                        os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
+                        os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
+                                                            ligand_path.split('/')[-1].split('.')[0]+'_out.pdbqt')))
 
-    target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
-    smile_file = os.path.join(user_db, 'smiles.csv')
-    df = pd.read_csv(smile_file, header=None, encoding='utf-8')
-    smile_data = df.values.tolist()
-    curr_proc = mp.current_process()
-    curr_proc.daemon = False
-    p = mp.Pool(processes=mp.cpu_count())
-    curr_proc.daemon = True
-    pool_lst = []
-    for ligand in smile_data:
-        smiles = ligand[1]
-        targets = p.apply_async(pred, args=(smiles, target_list))
-        pool_lst.append([ligand[0], targets])
-    p.close()
-    p.join()
-    pool_lst = [[n[0], n[1].get()] for n in pool_lst]
-    for target in pool_lst:
-        if target[1]:
-            ligand = target[0].split('.')[0] + '.pdbqt'
-            ligand_path = os.path.join(user_db, ligand)
-            if os.path.exists(ligand_path):
-                os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
-                          " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
-                                                                                  ligand_path, center_x, center_y,
-                                                                                  center_z, size_x, size_y, size_z))
-                os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
-                os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
-                                                    ligand_path.split('/')[-1].split('.')[0]+'_out.pdbqt')))
-
+    else:
+        ligand_lst = os.listdir(user_db)
+        ligand_lst = [v for v in ligand_lst if v.endswith('pdbqt')]
+        for ligand_ in ligand_lst:
+            ligand_path = os.path.join(user_db, ligand_)
+            os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
+                      " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
+                                                                              ligand_path, center_x, center_y,
+                                                                              center_z, size_x, size_y, size_z))
+            os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
+            os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
+                                                                                                     ligand_path.split(
+                                                                                                         '/')[-1].split(
+                                                                                                         '.')[0] + '_out.pdbqt')))
     res_lst = os.listdir(res)
     reg = 'REMARK VINA RESULT:(.*?)\n'
     re_reg = re.compile(reg)
@@ -564,12 +647,13 @@ def perform_screen2_user(work_name, user_db_name, pdb_path, resi_path, res_path)
             insert_lst.append(Screen(work_name=work_name, screen_cat='screen2', affinity=min(med),
                                      path=os.path.join(res.split('media/')[1],
                                                        out[:-2])))
-    Screen.objects.bulk_create(insert_lst)
-    arr = np.array(screen_res)
-    df = pd.DataFrame(arr, columns=['id', 'Affinity (kcal/mol)'])
-    df = df.sort_values("Affinity (kcal/mol)", ascending=False)
-    df.to_csv(screen_out, index=False)
-    os.system("mv %s %s" % (screen_out, res))
+    if screen_res:
+        Screen.objects.bulk_create(insert_lst)
+        arr = np.array(screen_res)
+        df = pd.DataFrame(arr, columns=['id', 'Affinity (kcal/mol)'])
+        df = df.sort_values("Affinity (kcal/mol)", ascending=False)
+        df.to_csv(screen_out, index=False)
+        os.system("mv %s %s" % (screen_out, res))
 
     screen2_status(work_name, status='completed')
 

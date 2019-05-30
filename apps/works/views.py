@@ -7,11 +7,11 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from dynamic_rest.viewsets import DynamicModelViewSet
-from .models import Banner, Product, Screen
+from .models import Banner, Product, Screen, Target
 from users.views import OrdersPagination
 from .serializers import BannerSerializer, ProductSerializer, AutoDockSerializer,  VirtualScreenSerializer
 from .serializers import VsBlastSerializer, ReverseVirtualScreenSerializer, DynamicSerializer, AdmetSerializer
-from .serializers import AutoDock2Serializer, VirtualScreen2Serializer, ScreenSerializer
+from .serializers import AutoDock2Serializer, VirtualScreen2Serializer, ScreenSerializer, TargetSerilizer
 from .tasks import perform_dock, perform_dock2, perform_screen, perform_screen2, perform_screen_user, perform_screen2_user
 from drug.settings import BASE_DIR
 # Create your views here.
@@ -38,6 +38,14 @@ class ProductViewset(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     queryset = Product.objects.all().order_by("-add_time")
     serializer_class = ProductSerializer
+
+
+class TargetViewset(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    获取靶点信息
+    """
+    queryset = Target.objects.all()
+    serializer_class = TargetSerilizer
 
 
 class AutoDockViewset(mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -87,7 +95,7 @@ class AutoDock2Viewset(mixins.CreateModelMixin, viewsets.GenericViewSet):
         lig_file = request.data['lig_file'].name
         resi_file = request.data['resi_file'].name
         pdb_path = os.path.join(BASE_DIR, 'media', 'dock2', username, work_name, pdb_file)  # (username, work_name)
-        lig_path = os.path.join(BASE_DIR, 'media', 'dock2', username, work_name, lig_file)
+        lig_path = os.path.join(BASE_DIR, 'med\ia', 'dock2', username, work_name, lig_file)
         resi_path = os.path.join(BASE_DIR, 'media', 'dock2', username, work_name, resi_file)
         res_path = os.path.join(BASE_DIR, 'media', 'dock2', username, work_name)
         perform_dock2.delay(work_name, pdb_path, lig_path, resi_path, res_path)
@@ -108,6 +116,7 @@ class VirtualScreenViewset(mixins.CreateModelMixin, viewsets.GenericViewSet):
         self.perform_create(serializer)
         username = request.user.username
         work_name = request.data['work_name']
+        target = request.data['target']
         size_x = request.data['size_x']
         size_y = request.data['size_y']
         size_z = request.data['size_z']
@@ -120,11 +129,11 @@ class VirtualScreenViewset(mixins.CreateModelMixin, viewsets.GenericViewSet):
         pdb_path = os.path.join(BASE_DIR, 'media', 'screen', username, work_name, pdb_file)
         res_path = os.path.join(BASE_DIR, 'media', 'screen', username, work_name)
         if user_db is None or user_db == '':
-            perform_screen.delay(work_name, center_x, center_y, center_z, size_x, size_y, size_z, mol_db, pdb_path,
+            perform_screen.delay(work_name, target, center_x, center_y, center_z, size_x, size_y, size_z, mol_db, pdb_path,
                                  res_path)
         else:
             user_db_name = request.data.get('user_db').name
-            perform_screen_user.delay(work_name, center_x,
+            perform_screen_user.delay(work_name, target, center_x,
                                       center_y, center_z, size_x, size_y, size_z, user_db_name,
                                       pdb_path, res_path)
         headers = self.get_success_headers(serializer.data)
@@ -144,6 +153,7 @@ class VirtualScreen2Viewset(mixins.CreateModelMixin, viewsets.GenericViewSet):
         self.perform_create(serializer)
         username = request.user.username
         work_name = request.data['work_name']
+        target = request.data['target']
         # mol_db = request.data['mol_db']
         mol_db = request.data.get('mol_db')
         resi_file = request.data['resi_file'].name
@@ -154,10 +164,10 @@ class VirtualScreen2Viewset(mixins.CreateModelMixin, viewsets.GenericViewSet):
         user_db = request.data.get('user_db')
 
         if user_db is None or user_db == '':
-            perform_screen2.delay(work_name, mol_db, pdb_path, resi_path, res_path)
+            perform_screen2.delay(work_name, target, mol_db, pdb_path, resi_path, res_path)
         else:
             user_db_name = request.data['user_db'].name
-            perform_screen2_user.delay(work_name, user_db_name,  pdb_path, resi_path, res_path)
+            perform_screen2_user.delay(work_name, target, user_db_name,  pdb_path, resi_path, res_path)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 

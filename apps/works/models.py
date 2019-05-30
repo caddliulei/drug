@@ -71,13 +71,12 @@ class Target(models.Model):
         verbose_name_plural = verbose_name
 
     def __unicode__(self):
-        return self.target
+        return "靶点列表"
 
 
 class AutoDock(models.Model):
     """
     分子对接  用户指点中心坐标以及盒子大小
-
     """
     user = models.ForeignKey(User, verbose_name='user')
     work_name = models.CharField(max_length=20, verbose_name='work_name', unique=True)
@@ -107,7 +106,6 @@ class AutoDock(models.Model):
 class AutoDock2(models.Model):
     """
     分子对接  用户指点对接的残基
-
     """
     user = models.ForeignKey(User, verbose_name='user')
     work_name = models.CharField(max_length=20, verbose_name='work_name', unique=True)
@@ -145,6 +143,7 @@ class VirtualScreen(models.Model):
     center_x = models.FloatField(verbose_name='center_x')
     center_y = models.FloatField(verbose_name='center_y')
     center_z = models.FloatField(verbose_name='center_z')
+    target = models.CharField(max_length=100000, verbose_name='target', default='')
     pdb_file = models.FileField(upload_to=screen_upload_to, verbose_name='pdb_file')
     user_db = models.FileField(upload_to=screen_upload_to, null=True, verbose_name='user_db')
     price = models.IntegerField(default=10000, verbose_name="price")
@@ -169,6 +168,7 @@ class VirtualScreen2(models.Model):
     mol_db = models.CharField(max_length=20, null=True, choices=(('zinc', 'zinc'), ('chembl', 'chembl'), ('wi', 'wi'),
                                                                  ('user_db_file', 'user_db_file')),
                               default=0, verbose_name='mol_db')
+    target = models.CharField(max_length=100000, verbose_name='target', default='')
     pdb_file = models.FileField(upload_to=screen2_upload_to, verbose_name='pdb_file')
     resi_file = models.FileField(upload_to=screen2_upload_to, verbose_name='resi_file')
     user_db = models.FileField(upload_to=screen2_upload_to, null=True, verbose_name='user_db')
@@ -285,4 +285,5 @@ class Admet(models.Model):
 
     def __unicode__(self):
         return self.user.username
+
 

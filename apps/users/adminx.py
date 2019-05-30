@@ -1,7 +1,7 @@
 # coding=utf-8
 import xadmin
 from xadmin import views
-from .models import VerifyCode, UserProfile
+from .models import VerifyCode
 
 
 class BaseSetting(object):
@@ -10,8 +10,8 @@ class BaseSetting(object):
 
 
 class GlobalSetting(object):
-    site_title = "高通量药物筛选平台"
-    site_footer = "药物筛选平台"
+    site_title = "药物虚拟筛选后台管理系统"
+    site_footer = "药物虚拟筛选平台"
     menu_style = "accordion"
 
 

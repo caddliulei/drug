@@ -95,6 +95,7 @@ def vendor(*tags):
     return media
 
 
+
 def lookup_needs_distinct(opts, lookup_path):
     """
     Returns True if 'distinct()' should be used to query the given lookup path.

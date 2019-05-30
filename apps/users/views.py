@@ -117,7 +117,7 @@ class AutoDockOrderViewset(DynamicModelViewSet):
     permission_classes = (IsAuthenticated,)
     # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
     serializer_class = AutoDuckOrderSerializer
-    ordering = ('add_time',)
+    ordering = ('-add_time',)
 
 
 class AutoDock2OrderViewset(DynamicModelViewSet):
@@ -131,7 +131,7 @@ class AutoDock2OrderViewset(DynamicModelViewSet):
     permission_classes = (IsAuthenticated,)
     # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
     serializer_class = AutoDuck2OrderSerializer
-    ordering = ('add_time',)
+    ordering = ('-add_time',)
 
 
 class VirtualScreenOrderViewset(DynamicModelViewSet):
@@ -145,7 +145,7 @@ class VirtualScreenOrderViewset(DynamicModelViewSet):
     permission_classes = (IsAuthenticated, )
     # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
     serializer_class = VirtualScreenOrderSerializer
-    ordering = ('add_time',)
+    ordering = ('-add_time',)
 
 
 class VirtualScreen2OrderViewset(DynamicModelViewSet):
@@ -159,7 +159,7 @@ class VirtualScreen2OrderViewset(DynamicModelViewSet):
     permission_classes = (IsAuthenticated,)
     # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
     serializer_class = VirtualScreen2OrderSerializer
-    ordering = ('add_time',)
+    ordering = ('-add_time',)
 
 
 class UserViewset(mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
