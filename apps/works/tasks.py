@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import division
 import re
 import os
 import math
@@ -10,9 +11,11 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.DataStructs import TanimotoSimilarity
 from celery import shared_task
-from works.models import AutoDock, AutoDock2, VirtualScreen, VirtualScreen2, Screen
+from works.models import AutoDock, AutoDock2, VirtualScreen, VirtualScreen2, Screen, Dock, VirScreen, SeaTarget,\
+    SeaVirScreen, Gbsa
 from drug.settings import BASE_DIR, TARGET_FOLDER_BASE, drugdb
-
+from extra_apps.utils.email_send import email_status
+TargetList = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
 # from perform import gen_user_db_qt_smiles
 
 FP_PARAM = {
@@ -107,49 +110,37 @@ def pred(smiles, target_list):
 
 
 def dock_status(work_name, status):
-    work = AutoDock.objects.get(work_name=work_name)
+    work = Dock.objects.get(work_name=work_name)
     work.status = status
     work.save()
 
 
 def dock_out(work_name, out_path):
-    work = AutoDock.objects.get(work_name=work_name)
+    work = Dock.objects.get(work_name=work_name)
     work.out_path = out_path
     work.save()
 
 
 def dock_affinity(work_name, affinity):
-    work = AutoDock.objects.get(work_name=work_name)
-    work.affinity = affinity
-    work.save()
-
-
-def dock2_status(work_name, status):
-    work = AutoDock2.objects.get(work_name=work_name)
-    work.status = status
-    work.save()
-
-
-def dock2_out(work_name, out_path):
-    work = AutoDock2.objects.get(work_name=work_name)
-    work.out_path = out_path
-    work.save()
-
-
-def dock2_affinity(work_name, affinity):
-    work = AutoDock2.objects.get(work_name=work_name)
+    work = Dock.objects.get(work_name=work_name)
     work.affinity = affinity
     work.save()
 
 
 def screen_status(work_name, status):
-    work = VirtualScreen.objects.get(work_name=work_name)
+    work = VirScreen.objects.get(work_name=work_name)
     work.status = status
     work.save()
 
 
-def screen2_status(work_name, status):
-    work = VirtualScreen2.objects.get(work_name=work_name)
+# def VirScreen_status(work_name, status):
+#     work = VirScreen.objects.get(work_name=work_name)
+#     work.status = status
+#     work.save()
+
+
+def gbsa_status(work_name, status):
+    work = Gbsa.objects.get(work_name=work_name)
     work.status = status
     work.save()
 
@@ -307,7 +298,7 @@ def perform_screen2(work_name, user_target, mol_db, pdb_path, resi_path, res_pat
     :param res_path:
     :return:
     """
-    screen2_status(work_name=work_name, status='computing')
+    # screen2_status(work_name=work_name, status='computing')
 
     with open(resi_path, 'r') as f:
         lines = f.readlines()
@@ -413,7 +404,7 @@ def perform_screen2(work_name, user_target, mol_db, pdb_path, resi_path, res_pat
         df.to_csv(screen_out, index=False)
         os.system("mv %s %s" % (screen_out, res))
 
-    screen2_status(work_name=work_name, status='completed')
+    # screen2_status(work_name=work_name, status='completed')
 
 
 @shared_task
@@ -543,7 +534,7 @@ def perform_screen2_user(work_name, user_target, user_db_name, pdb_path, resi_pa
     :param res_path:
     :return:
     """
-    screen2_status(work_name, status='computing')
+    # screen2_status(work_name, status='computing')
 
     with open(resi_path, 'r') as f:
         lines = f.readlines()
@@ -655,11 +646,11 @@ def perform_screen2_user(work_name, user_target, user_db_name, pdb_path, resi_pa
         df.to_csv(screen_out, index=False)
         os.system("mv %s %s" % (screen_out, res))
 
-    screen2_status(work_name, status='completed')
+    # screen2_status(work_name, status='completed')
 
 
 @shared_task
-def perform_dock(work_name, center_x, center_y, center_z, size_x, size_y, size_z, pdb_path, lig_path, res_path):
+def perform_dock(work_name, center_x, center_y, center_z, size_x, size_y, size_z, pdb_path, lig_path, res_path, email):
     """
     用户指定对接中心以及盒子大小
     :param work_name:
@@ -713,33 +704,34 @@ def perform_dock(work_name, center_x, center_y, center_z, size_x, size_y, size_z
         out_path = os.path.join(res.split('media/')[1], outqt[:-2])
         dock_out(work_name=work_name, out_path=out_path)
     dock_status(work_name=work_name, status='completed')
+    email_status(email)
 
 
 @shared_task
-def perform_dock2(work_name, pdb_path, lig_path, resi_path, res_path):
+def perform_dock2(work_name, pdb_path, lig_path, resn, res_path, email):
     """
-    用户指定几个残基对接
     :param work_name:
     :param pdb_path:
     :param lig_path:
-    :param resi_path:
+    :param resn:
     :param res_path:
     :return:
     """
-    dock2_status(work_name=work_name, status='computing')
+    dock_status(work_name=work_name, status='computing')
     res = '%s/res' % res_path
     if not os.path.exists(res):
         os.mkdir(res)
 
-    with open(resi_path, 'r') as f:
+    with open(pdb_path, 'r') as f:
         lines = f.readlines()
-    lines = [n.rstrip() for n in lines if len(n) > 1]
-
+    lines = [n.rstrip() for n in lines if n.startswith("ATOM")]
+    resn_lst = resn.split(";")
     x, y, z = [], [], []
     for n in lines:
-        x.append(float(n[30:38]))
-        y.append(float(n[38:46]))
-        z.append(float(n[46:54]))
+        if n.split()[5] in resn_lst:
+            x.append(float(n.split()[6]))
+            y.append(float(n.split()[7]))
+            z.append(float(n.split()[8]))
     center_x = float('%.3f' % (sum(x)/len(x)))
     center_y = float('%.3f' % (sum(y)/len(y)))
     center_z = float('%.3f' % (sum(z)/len(z)))
@@ -774,10 +766,239 @@ def perform_dock2(work_name, pdb_path, lig_path, resi_path, res_path):
             for model in out_lst:
                 med.append(float(model.split()[0]))
             affinity = min(med)
-            dock2_affinity(work_name=work_name, affinity=affinity)
+            dock_affinity(work_name=work_name, affinity=affinity)
         os.system("mv %s %s" % (outqt_path, res))
         os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res, outqt)))
         out_path = os.path.join(res.split('media/')[1], outqt[:-2])
-        dock2_out(work_name=work_name, out_path=out_path)
-    dock2_status(work_name=work_name, status='completed')
+        dock_out(work_name=work_name, out_path=out_path)
+    dock_status(work_name=work_name, status='completed')
+    email_status(email)
 
+
+@shared_task
+def perform_dock3(work_name, pdb_path, lig_path, reference_path, res_path, email):
+    """
+    :param work_name:
+    :param pdb_path:
+    :param lig_path:
+    :param reference_path:
+    :param res_path:
+    :param email:
+    :return:
+    """
+    dock_status(work_name=work_name, status='computing')
+    res = '%s/res' % res_path
+    if not os.path.exists(res):
+        os.mkdir(res)
+
+    with open(reference_path, 'r') as f:
+        lines = f.readlines()
+    lines = [n.rstrip() for n in lines if n.startswith("HETATM")]
+
+    x, y, z = [], [], []
+    for n in lines:
+        if n.split()[3].startswith("MK"):
+            x.append(float(n.split()[6]))
+            y.append(float(n.split()[7]))
+            z.append(float(n.split()[8]))
+    center_x = float('%.3f' % (sum(x)/len(x)))
+    center_y = float('%.3f' % (sum(y)/len(y)))
+    center_z = float('%.3f' % (sum(z)/len(z)))
+    size_x = max(x) - min(x)
+    size_y = max(y) - min(y)
+    size_z = max(z) - min(z)
+
+    os.system("python %s/extra_apps/vina/prepare_receptor4.py -r %s"
+              " -A checkhydrogens " % (BASE_DIR, pdb_path))
+    pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
+    if os.path.exists(pdbqt):
+        os.system("mv %s %s" % (pdbqt, res_path))
+
+    os.system("python %s/extra_apps/vina/prepare_ligand4.py -l %s -v" % (BASE_DIR, lig_path))
+    ligqt = lig_path.split('/')[-1].split('.')[0] + '.pdbqt'
+    if os.path.exists(ligqt):
+        os.system("mv %s %s" % (ligqt, res_path))
+
+    os.system("%s --receptor %s/%s --ligand %s/%s --center_x %s --center_y %s --center_z %s --size_x %s --size_y %s"
+              " --size_z %s" % ('vina', res_path, pdbqt, res_path, ligqt, center_x, center_y, center_z,
+                                size_x, size_y, size_z))
+    outqt = ligqt.split('.')[0]+'_out.pdbqt'
+    outqt_path = os.path.join(res_path, outqt)
+    if os.path.exists(outqt_path):
+        reg = 'REMARK VINA RESULT:(.*?)\n'
+        re_reg = re.compile(reg)
+        with open(outqt_path, 'r') as f:
+            data = f.read()
+        out_lst = re_reg.findall(data)
+        if out_lst:
+            med = []
+            for model in out_lst:
+                med.append(float(model.split()[0]))
+            affinity = min(med)
+            dock_affinity(work_name=work_name, affinity=affinity)
+        os.system("mv %s %s" % (outqt_path, res))
+        os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res, outqt)))
+        out_path = os.path.join(res.split('media/')[1], outqt[:-2])
+        dock_out(work_name=work_name, out_path=out_path)
+    dock_status(work_name=work_name, status='completed')
+    email_status(email)
+
+
+@shared_task
+def perform_sea(work_name, smiles, email):
+    """
+    :param work_name:
+    :param smiles:
+    :return:
+    """
+    screen_status(work_name=work_name, status='computing')
+    results = pred(smiles, target_list=TargetList)
+    insert_lst = []
+    if results:
+        targets = []
+        for n in results:
+            targets.append(n['chembl_id'])
+        tar_lst = ';'.join(targets)
+        insert_lst.append(SeaTarget(work_name=work_name, smiles=smiles, target=tar_lst))
+    else:
+        insert_lst.append(SeaTarget(work_name=work_name, smiles=smiles, target='null'))
+    SeaTarget.objects.bulk_create(insert_lst)
+    screen_status(work_name=work_name, status='completed')
+    email_status(email)
+
+
+@shared_task
+def perform_virscreen(work_name, user_target, mol_db, pdb_path, resn, res_path, email):
+    """
+    :param work_name:
+    :param pdb_path:
+    :param lig_path:
+    :param resn:
+    :param res_path:
+    :return:
+    """
+    screen_status(work_name=work_name, status='computing')
+    res = '%s/res' % res_path
+    if not os.path.exists(res):
+        os.mkdir(res)
+    with open(pdb_path, 'r') as f:
+        lines = f.readlines()
+    lines = [n.rstrip() for n in lines if n.startswith("ATOM")]
+    resn_lst = resn.split(";")
+    x, y, z = [], [], []
+    for n in lines:
+        if n.split()[5] in resn_lst:
+            x.append(float(n.split()[6]))
+            y.append(float(n.split()[7]))
+            z.append(float(n.split()[8]))
+    center_x = float('%.3f' % (sum(x)/len(x)))
+    center_y = float('%.3f' % (sum(y)/len(y)))
+    center_z = float('%.3f' % (sum(z)/len(z)))
+    size_x = max(x) - min(x)
+    size_y = max(y) - min(y)
+    size_z = max(z) - min(z)
+
+    screen_out = 'screen_out.csv'
+    res = os.path.join(res_path, 'res')
+
+    ligand_db = os.path.join(drugdb, mol_db)
+
+    os.system("python %s/extra_apps/vina/prepare_receptor4.py -r /%s"
+              " -A checkhydrogens " % (BASE_DIR, pdb_path))
+    pdbqt = pdb_path.split('/')[-1].split('.')[0] + '.pdbqt'
+    if os.path.exists(pdbqt):
+        os.system("mv %s %s" % (pdbqt, res_path))
+
+    target_list = os.listdir(os.path.join(TARGET_FOLDER_BASE, 'maccs'))
+    smile_file = os.path.join(ligand_db, 'smiles.csv')
+    df = pd.read_csv(smile_file, header=None, encoding='utf-8')
+    smile_data = df.values.tolist()
+    curr_proc = mp.current_process()
+    curr_proc.daemon = False
+    p = mp.Pool(processes=mp.cpu_count())
+    curr_proc.daemon = True
+    pool_lst = []
+    for ligand in smile_data:
+        smiles = ligand[1]
+        targets = p.apply_async(pred, args=(smiles, target_list))
+        pool_lst.append([ligand[0], targets])
+    p.close()
+    p.join()
+    pool_lst = [[n[0], n[1].get()] for n in pool_lst]
+    for target in pool_lst:
+        if target[1]:
+            pred_target = []
+            for pred_tar in target[1]:
+                pred_target.append(pred_tar['chembl_id'])
+            same_target = [l for l in pred_target if l == user_target]
+            if same_target:
+                    ligand = target[0].split('.')[0] + '.pdbqt'
+                    ligand_path = ligand_db + '/' + ligand
+                    os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
+                              " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
+                                                                                      ligand_path, center_x, center_y, center_z,
+                                                                                      size_x, size_y, size_z))
+                    os.system("mv %s %s" % (ligand_path.split('.')[0]+'_out.pdbqt', res))
+                    os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
+                                                            ligand_path.split('/')[-1].split('.')[0]+'_out.pdbqt')))
+    else:
+        ligand_lst = os.listdir(ligand_db)
+        ligand_lst = [v for v in ligand_lst if v.endswith('pdbqt')]
+        for ligand_ in ligand_lst:
+            ligand_path = os.path.join(ligand_db, ligand_)
+            os.system("%s --receptor %s/%s --ligand %s --center_x %s --center_y %s"
+                      " --center_z %s --size_x %s --size_y %s --size_z %s" % ('vina', res_path, pdbqt,
+                                                                              ligand_path, center_x, center_y,
+                                                                              center_z, size_x, size_y, size_z))
+            os.system("mv %s %s" % (ligand_path.split('.')[0] + '_out.pdbqt', res))
+            os.system("python %s/extra_apps/vina/pdbqt_to_pdb.py -f %s -v" % (BASE_DIR, os.path.join(res,
+                                                                                                     ligand_path.split(
+                                                                                                         '/')[-1].split(
+                                                                                                         '.')[0] + '_out.pdbqt')))
+    res_lst = os.listdir(res)
+    reg = 'REMARK VINA RESULT:(.*?)\n'
+    re_reg = re.compile(reg)
+    screen_res = []
+    insert_lst = []
+    for out in res_lst[:]:
+        out_path = os.path.join(res, out)
+        with open(out_path, 'r') as f:
+            data = f.read()
+        out_lst = re_reg.findall(data)
+        if out_lst:
+            med = []
+            for model in out_lst:
+                med.append(float(model.split()[0]))
+            file_name = out.split('_out')[0]
+            screen_res.append([file_name, min(med)])
+            insert_lst.append(SeaVirScreen(work_name=work_name, affinity=min(med),
+                                     path=os.path.join(res.split('media/')[1], out[:-2])))
+    if screen_res:
+        SeaVirScreen.objects.bulk_create(insert_lst)
+        arr = np.array(screen_res)
+        df = pd.DataFrame(arr, columns=['id', 'Affinity (kcal/mol)'])
+        df = df.sort_values("Affinity (kcal/mol)", ascending=False)
+        df.to_csv(screen_out, index=False)
+        os.system("mv %s %s" % (screen_out, res))
+    screen_status(work_name=work_name, status='completed')
+    email_status(email)
+
+
+@shared_task
+def perform_gbsa(work_name, pdb_path, lig_path, complex_path, res_path, email):
+    """
+    :param work_name:
+    :param pdb_path:
+    :param lig_path:
+    :param complex_path:
+    :param res_path:
+    :param email:
+    :return:
+    """
+    gbsa_status(work_name=work_name, status='computing')
+    res = os.path.join(res_path, 'res')
+    if not os.path.exists(res):
+        os.mkdir(res)
+    # os.system()
+    gbsa_status(work_name=work_name, status='completed')
+    email_status(email)

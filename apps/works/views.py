@@ -7,13 +7,17 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from dynamic_rest.viewsets import DynamicModelViewSet
-from .models import Banner, Product, Screen, Target
+from .models import Banner, Product, Screen, Target, Gbsa, Dock, VirScreen, SeaTarget, SeaVirScreen
 from users.views import OrdersPagination
-from .serializers import BannerSerializer, ProductSerializer, AutoDockSerializer,  VirtualScreenSerializer
+from .serializers import BannerSerializer, ProductSerializer, AutoDockSerializer,  VirtualScreenSerializer,\
+    GbsaSerializer, GbsaorderSerializer, DockSerializer, DockOrderSerializer, VirScreenSerializer, \
+    VirScreenOrderSerializer, SeaTargetOrderSerializer, SeaVirScreenOrderSerializer
 from .serializers import VsBlastSerializer, ReverseVirtualScreenSerializer, DynamicSerializer, AdmetSerializer
 from .serializers import AutoDock2Serializer, VirtualScreen2Serializer, ScreenSerializer, TargetSerilizer
-from .tasks import perform_dock, perform_dock2, perform_screen, perform_screen2, perform_screen_user, perform_screen2_user
+from .tasks import perform_dock, perform_dock2, perform_dock3, perform_screen, perform_screen2, perform_screen_user, \
+    perform_screen2_user, perform_sea, perform_virscreen, perform_gbsa
 from drug.settings import BASE_DIR
+
 # Create your views here.
 
 
@@ -34,7 +38,7 @@ class BannerViewset(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 class ProductViewset(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
-    获取轮播图列表
+    获取服務列表
     """
     queryset = Product.objects.all().order_by("-add_time")
     serializer_class = ProductSerializer
@@ -215,6 +219,172 @@ class ScreenViewset(DynamicModelViewSet):
     permission_classes = (IsAuthenticated,)
     # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
     serializer_class = ScreenSerializer
+    ordering = ('work_name',)
+
+
+class DockViewset(mixins.CreateModelMixin, viewsets.GenericViewSet):
+    """
+    保存对接数据
+    """
+    serializer_class = DockSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        username = request.user.username
+        work_name = request.data['work_name']
+        email = request.data['email']
+        size_x = request.data['size_x']
+        size_y = request.data['size_y']
+        size_z = request.data['size_z']
+        center_x = request.data['center_x']
+        center_y = request.data['center_y']
+        center_z = request.data['center_z']
+        pdb_file = request.data['pdb_file'].name
+        lig_file = request.data['lig_file'].name
+        res_path = os.path.join(BASE_DIR, 'media', 'dock', username, work_name)
+        pdb_path = os.path.join(BASE_DIR, 'media', 'dock', username, work_name, pdb_file)  # (username, work_name)
+        lig_path = os.path.join(BASE_DIR, 'media', 'dock', username, work_name, lig_file)
+        resn = request.data['resn']
+        if size_x:
+            perform_dock.delay(work_name, center_x, center_y, center_z, size_x, size_y, size_z, pdb_path, lig_path,
+                               res_path, email)
+        elif resn:
+            perform_dock2.delay(work_name, pdb_path, lig_path, resn, res_path, email)
+        else:
+            reference_file = request.data['reference_file'].name
+            reference_path = os.path.join(BASE_DIR, 'media', 'dock', username, work_name, reference_file)
+            perform_dock3.delay(work_name, pdb_path, lig_path, reference_path, res_path, email)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class DockOrderViewset(DynamicModelViewSet):
+    """
+    订单管理
+    list:
+        Dock
+    """
+    queryset = Dock.objects.all()
+    pagination_class = OrdersPagination
+    permission_classes = (IsAuthenticated,)
+    # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
+    serializer_class = DockOrderSerializer
+    ordering = ('-add_time',)
+
+
+class GbsaViewset(mixins.CreateModelMixin, viewsets.GenericViewSet):
+    """
+    保存Gbsa
+    """
+    serializer_class = GbsaSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        username = request.user.username
+        work_name = request.data['work_name']
+        email = request.data['email']
+        pdb_file = request.data['pdb_file'].name
+        lig_file = request.data['lig_file'].name
+        complex_file = request.data['complex_file'].name
+        pdb_path = os.path.join(BASE_DIR, 'media', 'gbsa', username, work_name, pdb_file)
+        lig_path = os.path.join(BASE_DIR, 'media', 'gbsa', username, work_name, lig_file)
+        complex_path = os.path.join(BASE_DIR, 'media', 'gbsa', username, work_name, complex_file)
+        res_path = os.path.join(BASE_DIR, 'media', 'gbsa', username, work_name)
+        perform_gbsa.delay(work_name, pdb_path, lig_path, complex_path, res_path, email)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class GbsaOrderViewset(DynamicModelViewSet):
+    """
+    订单管理
+    list:
+        Virscreen
+    """
+    queryset = Gbsa.objects.all()
+    pagination_class = OrdersPagination
+    permission_classes = (IsAuthenticated,)
+    # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
+    serializer_class = GbsaorderSerializer
+    ordering = ('-add_time',)
+
+
+class VirScreenViewset(mixins.CreateModelMixin, viewsets.GenericViewSet):
+    """
+    保存虚拟筛选数据
+    """
+    serializer_class = VirScreenSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        username = request.user.username
+        work_name = request.data['work_name']
+        smiles = request.data['smiles']
+        email = request.data['email']
+        if smiles:
+            perform_sea.delay(work_name, smiles, email)
+        else:
+            target = request.data['target']
+            mol_db = request.data.get('mol_db')
+            pdb_file = request.data['pdb_file'].name
+            resn = request.data['resn']
+            res_path = os.path.join(BASE_DIR, 'media', 'screen', username, work_name)
+            pdb_path = os.path.join(BASE_DIR, 'media', 'screen', username, work_name, pdb_file)  # (username, work_name)
+            perform_virscreen.delay(work_name, target, mol_db, pdb_path, resn, res_path, email)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class VirScreenOrderViewset(DynamicModelViewSet):
+    """
+    订单管理
+    list:
+        Virscreen
+    """
+    queryset = VirScreen.objects.all()
+    pagination_class = OrdersPagination
+    permission_classes = (IsAuthenticated,)
+    # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
+    serializer_class = VirScreenOrderSerializer
+    ordering = ('-add_time',)
+
+
+class SeaTargetViewset(DynamicModelViewSet):
+    """
+    订单管理
+    list:
+        Dock
+    """
+    queryset = SeaTarget.objects.all()
+    pagination_class = OrdersPagination
+    permission_classes = (IsAuthenticated,)
+    # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
+    serializer_class = SeaTargetOrderSerializer
+    ordering = ('work_name',)
+
+
+class SeaVirScreenOrderViewset(DynamicModelViewSet):
+    """
+    订单管理
+    list:
+        Virscreen
+    """
+    queryset = SeaVirScreen.objects.all()
+    pagination_class = OrdersPagination
+    permission_classes = (IsAuthenticated,)
+    # authentication_classes = (JSONWebTokenAuthentication, SessionAuthentication)
+    serializer_class = SeaVirScreenOrderSerializer
     ordering = ('work_name',)
 
 

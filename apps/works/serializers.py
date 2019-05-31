@@ -3,8 +3,8 @@
 
 from rest_framework import serializers
 from dynamic_rest.serializers import DynamicModelSerializer
-from .models import Banner, Product, AutoDock, AutoDock2, VirtualScreen, VirtualScreen2
-from .models import Target, VsBlast, ReverseVirtualScreen, Dynamic, Admet, Screen
+from .models import Banner, Product, AutoDock, AutoDock2, VirtualScreen, VirtualScreen2, SeaTarget, SeaVirScreen
+from .models import Target, VsBlast, ReverseVirtualScreen, Dynamic, Admet, Screen, Dock, VirScreen, Gbsa
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -117,3 +117,70 @@ class AdmetSerializer(serializers.ModelSerializer):
         model = Admet
         fields = "__all__"
 
+
+class DockSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(
+        default=serializers.CurrentUserDefault()
+    )
+
+    class Meta:
+        model = Dock
+        fields = "__all__"
+
+
+class DockOrderSerializer(DynamicModelSerializer):
+
+    class Meta:
+        model = Dock
+        fields = "__all__"
+
+
+class VirScreenSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(
+        default=serializers.CurrentUserDefault()
+    )
+
+    class Meta:
+        model = VirScreen
+        fields = "__all__"
+
+
+class SeaTargetOrderSerializer(DynamicModelSerializer):
+
+    class Meta:
+        model = SeaTarget
+        fields = "__all__"
+
+
+class SeaVirScreenOrderSerializer(DynamicModelSerializer):
+
+    class Meta:
+        model = SeaVirScreen
+        fields = "__all__"
+
+
+class VirScreenOrderSerializer(DynamicModelSerializer):
+
+    class Meta:
+        model = VirScreen
+        fields = "__all__"
+
+
+class GbsaSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(
+        default=serializers.CurrentUserDefault()
+    )
+
+    class Meta:
+        model = Gbsa
+        fields = "__all__"
+
+
+class GbsaorderSerializer(DynamicModelSerializer):
+    user = serializers.HiddenField(
+        default=serializers.CurrentUserDefault()
+    )
+
+    class Meta:
+        model = Gbsa
+        fields = "__all__"

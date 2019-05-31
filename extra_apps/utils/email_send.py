@@ -22,3 +22,9 @@ def email_send(email, code, send_type="register"):
                                 from_email=EMAIL_FROM, recipient_list=[email])
         return send_status
 
+
+def email_status(email):
+    email_title = '虚拟筛选服务器'
+    email_body = '您的任务已经完成,请登录网站查看'
+    send_status = send_mail(subject=email_title, message=email_body, from_email=EMAIL_FROM, recipient_list=[email])
+    return send_status
