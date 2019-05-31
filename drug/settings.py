@@ -161,7 +161,6 @@ MEDIA_URL = "/media/"
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
-# vina_path = '/home/jianping/vina/bin/vina'
 TARGET_FOLDER_BASE = '/home/jianping/target-pkl'
 drugdb = '/home/jianping/drugdb'
 

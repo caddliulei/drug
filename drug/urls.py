@@ -24,20 +24,29 @@ from users.views import UserRegViewset, EmailCodeViewset, AutoDockOrderViewset, 
     VirtualScreenOrderViewset, VirtualScreen2OrderViewset, UserinfoViewset, PasswordresetViewset
 from works.views import BannerViewset, ProductViewset, AutoDockViewset, VirtualScreenViewset
 from works.views import VsBlastViewset, ReverseVirtualScreenViewset, DynamicViewset, AdmetViewset
-from works.views import AutoDock2Viewset, VirtualScreen2Viewset, ScreenViewset
+from works.views import AutoDock2Viewset, VirtualScreen2Viewset, ScreenViewset, TargetViewset, GbsaViewset, \
+    GbsaOrderViewset, DockViewset, DockOrderViewset, VirScreenViewset, SeaTargetViewset, SeaVirScreenOrderViewset, \
+    VirScreenOrderViewset
 import xadmin
 from rest_framework.authtoken import views
 from rest_framework_jwt.views import obtain_jwt_token
 
 
 router = DefaultRouter()
-# forgets = UserForGetPWViewset.as_view({
-#     'post': 'update',
-# })
+
+router.register(r'docks', DockViewset, base_name='dock')
+router.register(r'dockorder', DockOrderViewset, base_name='dockorder')
+router.register(r'virscreens', VirScreenViewset, base_name='virscreen')
+router.register(r'virscreenorder', VirScreenOrderViewset, base_name='virscreenorder')
+router.register(r'seatargetorder', SeaTargetViewset, base_name='seatarget')
+router.register(r'seavirscreenorder', SeaVirScreenOrderViewset, base_name='seavirscreenorder')
+router.register(r'gbsa', GbsaViewset, base_name='gbsa')
+router.register(r'gbsaorder', GbsaOrderViewset, base_name='gbsaorder')
 router.register(r'codes', EmailCodeViewset, base_name='验证码')
 router.register(r'banners', BannerViewset, base_name='首页轮播图')
 router.register(r'products', ProductViewset, base_name='服务内容')
-router.register(r'autodocts', AutoDockViewset, base_name='分子对接')
+router.register(r'targets', TargetViewset, base_name='靶点列表')
+router.register(r'autodocks', AutoDockViewset, base_name='分子对接')
 router.register(r'autodock2s', AutoDock2Viewset, base_name='分子对接2')
 router.register(r'virtualscreens', VirtualScreenViewset, base_name='虚拟筛选')
 router.register(r'virtualscreen2s', VirtualScreen2Viewset, base_name='虚拟筛选2')
@@ -61,7 +70,7 @@ urlpatterns = [
     url(r'^', include(router.urls)),
     url(r'^media/(?P<path>.*)$', serve, {"document_root": MEDIA_ROOT}),
     url(r'^docs/', include_docs_urls(title="高通量药物筛选平台")),
-    # url(r'^api-token-auth/', views.obtain_auth_token),
+    url(r'^api-token-auth/', views.obtain_auth_token),
     url(r'^api-token-auth/', obtain_jwt_token),
     url(r'^rest-auth/', include('rest_auth.urls')),
     # i/auth/', include('djoser.urls.authtoken')),
